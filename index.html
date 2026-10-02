@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VERSE — karaoke room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,620&family=Outfit:wght@340;460;580&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root {
+    --bg: #100e0c;
+    --bg-2: #1a1612;
+    --elev: #221c17;
+    --line: rgba(243, 228, 204, 0.12);
+    --ink: #f4eadc;
+    --muted: #b5a594;
+    --faint: #7d7164;
+    --amber: #e7a44a;
+    --amber-2: #ffd18a;
+    --wine: #8d3d4a;
+    --ok: #8fbf8a;
+    --danger: #e07a6a;
+    --shadow: 0 24px 60px rgba(0,0,0,.35);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: Outfit, sans-serif;
+    background:
+      radial-gradient(900px 520px at 10% -10%, rgba(141, 61, 74, .35), transparent 60%),
+      radial-gradient(800px 480px at 110% 0%, rgba(231, 164, 74, .18), transparent 55%),
+      var(--bg);
+    min-height: 100%;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .app { max-width: 1180px; margin: 0 auto; padding: 22px 18px 48px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-bottom: 22px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: conic-gradient(from 210deg, var(--amber), var(--wine), var(--amber-2), var(--amber));
+    display: grid; place-items: center; box-shadow: var(--shadow);
+  }
+  .mark span {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--bg);
+    display: grid; place-items: center; font-family: Fraunces, serif; font-size: 16px;
+  }
+  h1 { font-family: Fraunces, serif; font-weight: 560; font-size: 28px; margin: 0; letter-spacing: -0.03em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn, .ghost, .danger {
+    border: 1px solid var(--line); background: var(--elev); color: var(--ink);
+    border-radius: 999px; padding: 9px 14px; transition: .15s transform, .15s background;
+  }
+  .btn:hover, .ghost:hover { transform: translateY(-1px); background: #2b241e; }
+  .btn.primary { background: var(--amber); color: #2a1c09; border-color: transparent; font-weight: 580; }
+  .btn.primary:hover { background: var(--amber-2); }
+  .danger { color: var(--danger); }
+  .ghost { background: transparent; }
+  .panel {
+    background: rgba(26, 22, 18, .86);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+  }
+  .lobby { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+  .pad { padding: 22px; }
+  h2 { font-family: Fraunces, serif; font-weight: 560; letter-spacing: -0.03em; margin: 0 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
+  label { display: block; font-size: 12px; color: var(--faint); letter-spacing: .08em; text-transform: uppercase; margin: 12px 0 6px; }
+  input[type="text"], input[type="password"], input[type="number"], textarea, select {
+    width: 100%; background: #14110e; border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 12px; outline: none;
+  }
+  textarea { min-height: 180px; resize: vertical; line-height: 1.45; }
+  input:focus, textarea:focus, select:focus { border-color: rgba(231,164,74,.7); }
+  .stage { display: grid; grid-template-columns: 280px 1fr 300px; gap: 14px; align-items: start; }
+  .lyrics-card { min-height: 540px; padding: 22px 22px 16px; display: flex; flex-direction: column; }
+  .now {
+    font-family: Fraunces, serif; font-size: clamp(28px, 4vw, 46px); line-height: 1.15;
+    letter-spacing: -0.03em; min-height: 2.4em; margin: 18px 0 8px;
+  }
+  .now .w { opacity: .32; transition: opacity .08s linear, color .08s linear; }
+  .now .w.sung { opacity: .92; }
+  .now .w.on { opacity: 1; color: var(--amber-2); }
+  .next { color: var(--muted); font-size: 18px; min-height: 1.6em; }
+  .section-tag {
+    display: inline-block; border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 10px; color: var(--amber); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .meta { color: var(--faint); font-size: 13px; }
+  .controls { display: flex; gap: 10px; align-items: center; margin-top: auto; padding-top: 16px; }
+  input[type="range"] { width: 100%; accent-color: var(--amber); }
+  .side { padding: 14px; }
+  .side h3 { margin: 4px 0 10px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); font-weight: 580; }
+  .queue-item, .hit, .chat-line {
+    border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; background: #16130f;
+  }
+  .queue-item.active { border-color: rgba(231,164,74,.7); }
+  .chat { height: 180px; overflow: auto; margin-bottom: 8px; }
+  .chat-line { font-size: 13px; }
+  .chat-line b { color: var(--amber-2); font-weight: 580; }
+  .hidden { display: none !important; }
+  .status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+  .cams { margin-top: 14px; overflow: hidden; }
+  .cams iframe { width: 100%; height: 320px; border: 0; background: #000; border-radius: 12px; }
+  .modal {
+    position: fixed; inset: 0; background: rgba(8,6,5,.72); display: grid; place-items: center; padding: 18px; z-index: 20;
+  }
+  .modal .panel { width: min(640px, 100%); max-height: 90vh; overflow: auto; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pill { font-size: 12px; color: var(--ok); }
+  .warn { color: var(--danger); font-size: 12px; }
+  footer.note { color: var(--faint); font-size: 12px; margin-top: 18px; line-height: 1.45; }
+  @media (max-width: 980px) {
+    .lobby, .stage { grid-template-columns: 1fr; }
+    .lyrics-card { min-height: 420px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark"><span>V</span></div>
+      <div>
+        <h1>VERSE</h1>
+        <div class="sub">A room that keeps the time.</div>
+      </div>
+    </div>
+    <div class="row">
+      <span id="roomBadge" class="meta"></span>
+      <button class="ghost" id="settingsBtn">Settings</button>
+      <button class="ghost hidden" id="leaveBtn">Leave</button>
+    </div>
+  </header>
+
+  <section id="lobby" class="lobby">
+    <div class="panel pad">
+      <h2>Open a room</h2>
+      <p class="lead">Upload a track, pull synced lyrics, or let Whisper and DeepSeek draft them. Friends join with the code. Cameras ride on VDO.Ninja so nobody has to run a media server.</p>
+      <label>Your name</label>
+      <input id="nameInput" type="text" placeholder="Taylor" maxlength="24" />
+      <div class="split">
+        <div>
+          <label>Room code</label>
+          <input id="roomInput" type="text" placeholder="blank = new room" maxlength="12" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn primary" id="joinBtn" style="width:100%">Enter room</button>
+        </div>
+      </div>
+      <p class="status" id="lobbyStatus"></p>
+      <p class="lead" style="margin-top:18px">Reconnect uses the last room stored on this browser. The host is whoever claims the code first.</p>
+      <button class="ghost" id="reconnectBtn">Reconnect last room</button>
+    </div>
+    <div class="panel pad">
+      <h2>How a song gets words</h2>
+      <p class="lead">1. Filename or search hits LRCLIB for real synced lyrics.<br>2. If that misses, browser Whisper drafts a transcript.<br>3. DeepSeek cleans the wording and splits Verse, Chorus, Bridge.<br>Word lights follow the timestamps. You can still edit the LRC.</p>
+      <p class="warn">Headphones if the camera room is live. The backing track will feed back into VDO.Ninja otherwise.</p>
+    </div>
+  </section>
+
+  <section id="room" class="stage hidden">
+    <aside class="panel side">
+      <h3>Queue</h3>
+      <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" class="hidden" />
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn primary" id="uploadBtn">Upload</button>
+      </div>
+      <div id="queue"></div>
+      <h3 style="margin-top:16px">Find lyrics</h3>
+      <input id="searchQ" type="text" placeholder="artist and title" />
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="searchBtn">Search LRCLIB</button>
+        <button class="ghost" id="editLyricsBtn">Edit</button>
+      </div>
+      <div id="hits"></div>
+      <p class="status" id="lyricStatus"></p>
+    </aside>
+
+    <main class="panel lyrics-card">
+      <div class="row" style="justify-content:space-between">
+        <span class="section-tag" id="sectionTag">Verse</span>
+        <span class="meta" id="trackMeta">No track</span>
+      </div>
+      <div class="now" id="nowLine">Drop a song to start.</div>
+      <div class="next" id="nextLine"></div>
+      <div class="controls">
+        <button class="btn primary" id="playBtn">Play</button>
+        <button class="ghost" id="recordBtn">Record</button>
+        <input id="seek" type="range" min="0" max="1000" value="0" />
+        <span class="meta" id="clock">0:00</span>
+      </div>
+      <div class="split" style="margin-top:12px">
+        <div>
+          <label>Vocal (center)</label>
+          <input id="vocalGain" type="range" min="0" max="150" value="100" />
+        </div>
+        <div>
+          <label>Band (sides)</label>
+          <input id="bandGain" type="range" min="0" max="150" value="100" />
+        </div>
+      </div>
+      <p class="status" id="mixNote">The host mix is streamed live to the room. Vocal is the center channel, band is the sides. Mono files cannot be split.</p>
+    </main>
+
+    <aside class="panel side">
+      <h3>Room</h3>
+      <div class="row">
+        <button class="ghost" id="copyCodeBtn">Copy code</button>
+        <button class="ghost" id="camsBtn">Cameras</button>
+        <button class="ghost" id="aiBtn">Clean with AI</button>
+      </div>
+      <p class="meta" id="peerStatus" style="margin-top:8px"></p>
+      <h3 style="margin-top:14px">Chat</h3>
+      <div class="chat" id="chat"></div>
+      <div class="row">
+        <input id="chatInput" type="text" placeholder="Message" />
+        <button class="btn" id="chatSend">Send</button>
+      </div>
+      <div class="cams hidden" id="camsWrap">
+        <iframe id="camsFrame" allow="camera; microphone; autoplay; display-capture; fullscreen" title="Room cameras"></iframe>
+      </div>
+    </aside>
+  </section>
+  <footer class="note">VERSE keeps the DeepSeek key in local storage. Lyrics search uses LRCLIB. Party video uses VDO.Ninja. Sync uses PeerJS. Vocal split is a center-channel cancel, not a neural stem model.</footer>
+</div>
+
+<div class="modal hidden" id="settingsModal">
+  <div class="panel pad">
+    <h2>Settings</h2>
+    <label>DeepSeek API key</label>
+    <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+    <label>Optional CORS proxy prefix</label>
+    <input id="proxy" type="text" placeholder="https://corsproxy.io/?" />
+    <p class="warn">Only set a proxy if direct calls fail. A public proxy can see the key.</p>
+    <label>DeepSeek model</label>
+    <input id="model" type="text" value="deepseek-chat" />
+    <label>Mic monitor while singing</label>
+    <input id="micGain" type="range" min="0" max="150" value="80" />
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="saveSettings">Save</button>
+      <button class="ghost" id="closeSettings">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="lyricsModal">
+  <div class="panel pad">
+    <h2>Lyrics</h2>
+    <p class="lead">LRC lines like [00:12.34] keep the lights honest. Section tags like [Chorus] are fine on their own line.</p>
+    <textarea id="lyricsEditor"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="applyLyrics">Apply</button>
+      <button class="ghost" id="transcribeBtn">Transcribe</button>
+      <button class="ghost" id="closeLyrics">Close</button>
+    </div>
+    <p class="status" id="transcribeStatus"></p>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const storeKey = "verse.settings";
+const sessionKey = "verse.session";
+
+const state = {
+  settings: loadSettings(),
+  name: "",
+  room: "",
+  role: "guest",
+  peer: null,
+  conns: [],
+  hostConn: null,
+  lines: [],
+  words: [],
+  queue: [],
+  current: null,
+  playing: false,
+  record: null,
+  chunks: [],
+  incoming: null,
+  asr: null,
+  lyricToken: 0,
+  clock: { t: 0, at: 0, playing: false },
+  calls: {}
+};
+
+function loadSettings() {
+  try { return Object.assign({ apiKey: "", proxy: "", model: "deepseek-chat", mic: 80 }, JSON.parse(localStorage.getItem(storeKey) || "{}")); }
+  catch { return { apiKey: "", proxy: "", model: "deepseek-chat", mic: 80 }; }
+}
+function saveSettings(s) {
+  state.settings = s;
+  localStorage.setItem(storeKey, JSON.stringify(s));
+}
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem(sessionKey) || "null"); } catch { return null; }
+}
+function saveSession() {
+  localStorage.setItem(sessionKey, JSON.stringify({ name: state.name, room: state.room }));
+}
+
+function uid() { return Math.random().toString(36).slice(2, 8); }
+function code() { return Math.random().toString(36).slice(2, 6); }
+function fmt(t) {
+  if (!isFinite(t) || t < 0) t = 0;
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return m + ":" + String(s).padStart(2, "0");
+}
+function hostId(room) { return "verse-" + room.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12); }
+
+const audioEl = new Audio();
+audioEl.crossOrigin = "anonymous";
+let ctx, graph;
+
+function ensureGraph() {
+  if (graph) return graph;
+  ctx = new AudioContext();
+  const source = ctx.createMediaElementSource(audioEl);
+  const splitter = ctx.createChannelSplitter(2);
+  const vocalGain = ctx.createGain();
+  const bandGain = ctx.createGain();
+  const master = ctx.createGain();
+  const micGain = ctx.createGain();
+  const invert = ctx.createGain();
+  invert.gain.value = -1;
+  source.connect(splitter);
+  splitter.connect(vocalGain, 0);
+  splitter.connect(vocalGain, 1);
+  splitter.connect(bandGain, 0);
+  splitter.connect(invert, 1);
+  invert.connect(bandGain);
+  vocalGain.connect(master);
+  bandGain.connect(master);
+  micGain.connect(master);
+  master.connect(ctx.destination);
+  const live = ctx.createMediaStreamDestination();
+  master.connect(live);
+  graph = { vocalGain, bandGain, micGain, master, live, micIn: null };
+  applyMix();
+  return graph;
+}
+function songTime() {
+  if (state.role === "host") return audioEl.currentTime || 0;
+  const c = state.clock;
+  if (!c.playing) return c.t || 0;
+  return (c.t || 0) + (performance.now() - c.at) / 1000;
+}
+
+function parseLRC(text) {
+  const rows = String(text || "").split(/\r?\n/);
+  const lines = [];
+  let section = "Verse";
+  for (const raw of rows) {
+    const tag = raw.match(/^\s*\[(verse|chorus|pre-?chorus|bridge|outro|intro|hook|refrain)([^\]]*)\]\s*$/i);
+    if (tag) { section = tag[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) + (tag[2] || ""); continue; }
+    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
+    const lyric = raw.replace(/\[[^\]]+\]/g, "").trim();
+    if (!stamps.length) {
+      if (lyric) lines.push({ start: null, text: lyric, section });
+      continue;
+    }
+    for (const s of stamps) lines.push({ start: Number(s[1]) * 60 + Number(s[2]), text: lyric, section });
+  }
+  lines.sort((a, b) => (a.start ?? 1e9) - (b.start ?? 1e9));
+  const duration = audioEl.duration || 180;
+  const missing = lines.filter((l) => l.start == null);
+  if (missing.length && lines.some((l) => l.start != null)) {
+    const known = lines.filter((l) => l.start != null);
+    const end = known[known.length - 1].start + 4;
+    missing.forEach((l, i) => { l.start = end + i * 3; });
+  } else if (missing.length) {
+    const step = duration / (missing.length + 1);
+    missing.forEach((l, i) => { l.start = step * (i + 1); });
+  }
+  for (let i = 0; i < lines.length; i++) {
+    lines[i].end = lines[i + 1] ? lines[i + 1].start : lines[i].start + 4;
+  }
+  return lines.filter((l) => l.text);
+}
+function buildWords(lines) {
+  const words = [];
+  lines.forEach((line, li) => {
+    const parts = line.text.split(/\s+/).filter(Boolean);
+    const span = Math.max(0.2, (line.end - line.start) / Math.max(1, parts.length));
+    parts.forEach((text, i) => words.push({ text, start: line.start + i * span, end: line.start + (i + 1) * span, li }));
+  });
+  return words;
+}
+function toLRC(lines) {
+  let section = "";
+  return lines.map((l) => {
+    const head = l.section !== section ? `[${l.section}]\n` : "";
+    section = l.section;
+    const m = Math.floor((l.start || 0) / 60);
+    const s = ((l.start || 0) % 60).toFixed(2).padStart(5, "0");
+    return head + `[${String(m).padStart(2, "0")}:${s}] ${l.text}`;
+  }).join("\n");
+}
+function setLyrics(text) {
+  state.lines = parseLRC(text);
+  state.words = buildWords(state.lines);
+  if (state.role === "host") broadcast({ type: "lyrics", lrc: text, title: state.current && state.current.title, artist: state.current && state.current.artist });
+}
+function applyMix() {
+  if (!graph) return;
+  graph.vocalGain.gain.value = Number($("vocalGain").value) / 100;
+  graph.bandGain.gain.value = Number($("bandGain").value) / 100;
+  graph.micGain.gain.value = Number($("micGain").value) / 100;
+}
+function renderLine(t) {
+  const lines = state.lines;
+  if (!lines.length) return;
+  let idx = 0;
+  for (let i = 0; i < lines.length; i++) if (t >= lines[i].start) idx = i;
+  const line = lines[idx];
+  $("sectionTag").textContent = line.section || "Verse";
+  const words = state.words.filter((w) => w.li === idx);
+  $("nowLine").innerHTML = words.map((w) => `<span class="w${t >= w.end ? " sung" : ""}${t >= w.start && t < w.end ? " on" : ""}">${escapeHtml(w.text)}</span>`).join(" ");
+  $("nextLine").textContent = lines[idx + 1] ? lines[idx + 1].text : "";
+}
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&", "<": "<", ">": ">" }[c])); }
+
+async function searchLyrics() {
+  const q = $("searchQ").value.trim();
+  if (!q) return [];
+  $("lyricStatus").textContent = "Searching LRCLIB…";
+  $("hits").innerHTML = "";
+  try {
+    const res = await fetch("https://lrclib.net/api/search?q=" + encodeURIComponent(q), { headers: { "Lrclib-Client": "VERSE/0.1 (github pages karaoke)" } });
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) { $("lyricStatus").textContent = "No LRCLIB match. Transcribing…"; return []; }
+    $("lyricStatus").textContent = data.length + " matches.";
+    data.slice(0, 6).forEach((hit) => {
+      const el = document.createElement("button");
+      el.className = "hit";
+      el.style.width = "100%";
+      el.style.textAlign = "left";
+      el.innerHTML = `<b>${escapeHtml(hit.trackName || "")}</b><br><span class="meta">${escapeHtml(hit.artistName || "")}${hit.syncedLyrics ? " · synced" : " · plain"}</span>`;
+      el.onclick = () => applyHit(hit);
+      $("hits").appendChild(el);
+    });
+    return data;
+  } catch (err) {
+    $("lyricStatus").textContent = "Search failed. " + err.message;
+    return [];
+  }
+}
+function scoreHit(hit, item) {
+  let score = 0;
+  if (hit.syncedLyrics) score += 5;
+  else if (hit.plainLyrics) score += 2;
+  const title = (item.title || "").toLowerCase();
+  const artist = (item.artist || "").toLowerCase();
+  if (title && (hit.trackName || "").toLowerCase().includes(title.slice(0, 12))) score += 3;
+  if (artist && (hit.artistName || "").toLowerCase().includes(artist.slice(0, 8))) score += 3;
+  if (hit.duration && audioEl.duration && Math.abs(hit.duration - audioEl.duration) < 3) score += 4;
+  return score;
+}
+function applyHit(hit) {
+  const text = hit.syncedLyrics || hit.plainLyrics || "";
+  if (state.current) {
+    state.current.title = hit.trackName || state.current.title;
+    state.current.artist = hit.artistName || state.current.artist;
+    state.current.lrc = text;
+    $("trackMeta").textContent = [state.current.artist, state.current.title].filter(Boolean).join(" — ");
+  }
+  setLyrics(text);
+  $("lyricStatus").textContent = hit.syncedLyrics ? "Synced lyrics applied." : "Plain lyrics applied. Timings are estimated.";
+}
+async function ensureLyrics(item) {
+  const token = ++state.lyricToken;
+  if (!item || state.current !== item) return;
+  if (item.lrc) {
+    setLyrics(item.lrc);
+    $("lyricStatus").textContent = "Lyrics ready.";
+    $("nowLine").textContent = state.lines[0] ? state.lines[0].text : "Lyrics ready.";
+    return;
+  }
+  $("nowLine").textContent = "Finding lyrics…";
+  $("nextLine").textContent = "";
+  const hits = await searchLyrics();
+  if (token !== state.lyricToken || state.current !== item) return;
+  const best = hits.slice().sort((a, b) => scoreHit(b, item) - scoreHit(a, item))[0];
+  if (best && (best.syncedLyrics || best.plainLyrics) && scoreHit(best, item) >= 2) {
+    applyHit(best);
+    return;
+  }
+  if (!item.file) {
+    $("lyricStatus").textContent = "No lyrics for this track yet.";
+    $("nowLine").textContent = item.title || "No lyrics";
+    return;
+  }
+  const lrc = await transcribeItem(item);
+  if (token !== state.lyricToken || state.current !== item || !lrc) return;
+  item.lrc = lrc;
+  setLyrics(lrc);
+  $("lyricsEditor").value = lrc;
+  $("lyricStatus").textContent = "Transcribed. Cleaning wording…";
+  if (state.settings.apiKey) await cleanWithAI(true);
+  if (token === state.lyricToken && state.current === item) item.lrc = toLRC(state.lines);
+}
+
+async function transcribeItem(item) {
+  $("transcribeStatus").textContent = "Loading Whisper Tiny (first run downloads the model)…";
+  $("lyricStatus").textContent = "No LRCLIB match. Transcribing this track…";
+  try {
+    if (!state.asr) {
+      const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+      state.asr = await pipeline("automatic-speech-recognition", "Xenova/whisper-tiny.en");
+    }
+    const buf = await item.file.arrayBuffer();
+    const ac = new AudioContext();
+    const decoded = await ac.decodeAudioData(buf.slice(0));
+    const sr = 16000;
+    const len = Math.min(Math.floor(decoded.duration * sr), sr * 60 * 12);
+    const offline = new OfflineAudioContext(1, len, sr);
+    const src = offline.createBufferSource();
+    src.buffer = decoded;
+    src.connect(offline.destination);
+    src.start();
+    const mono = await offline.startRendering();
+    await ac.close();
+    $("lyricStatus").textContent = "Transcribing… first pass can take a minute.";
+    const out = await state.asr(mono.getChannelData(0), { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5 });
+    if (out.chunks && out.chunks.length) {
+      return out.chunks.map((c) => {
+        const st = c.timestamp && c.timestamp[0] != null ? c.timestamp[0] : 0;
+        const m = Math.floor(st / 60);
+        const s = (st % 60).toFixed(2).padStart(5, "0");
+        return `[${String(m).padStart(2, "0")}:${s}] ${(c.text || "").trim()}`;
+      }).join("\n");
+    }
+    return out.text || "";
+  } catch (err) {
+    $("lyricStatus").textContent = "Transcription failed: " + err.message;
+    $("transcribeStatus").textContent = err.message;
+    return "";
+  }
+}
+async function transcribe() {
+  if (!state.current || !state.current.file) { $("transcribeStatus").textContent = "Upload a track first."; return; }
+  const lrc = await transcribeItem(state.current);
+  if (!lrc) return;
+  state.current.lrc = lrc;
+  $("lyricsEditor").value = lrc;
+  setLyrics(lrc);
+  $("transcribeStatus").textContent = "Draft applied.";
+}
+
+async function cleanWithAI(silent) {
+  const key = state.settings.apiKey;
+  if (!key) { if (!silent) alert("Add a DeepSeek key in Settings."); return; }
+  const raw = state.lines.length ? toLRC(state.lines) : $("lyricsEditor").value;
+  if (!raw.trim()) { if (!silent) alert("Need lyrics or a transcript first."); return; }
+  $("lyricStatus").textContent = "Asking DeepSeek to structure lyrics…";
+  const prompt = `You clean karaoke lyrics. Return only JSON: {"title":"","artist":"","lrc":""}.
+The lrc field is LRC text. Keep existing timestamps if present. Add a section tag line before each section, exactly one of [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro].
+Fix obvious speech-to-text errors using the song title if given. Do not invent extra verses. Title hint: ${$("searchQ").value}
+Lyrics:
+${raw.slice(0, 12000)}`;
+  try {
+    const base = (state.settings.proxy || "") + "https://api.deepseek.com/chat/completions";
+    const res = await fetch(base, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({
+        model: state.settings.model || "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error && data.error.message || res.statusText);
+    const text = data.choices[0].message.content;
+    const json = JSON.parse(text.replace(/^```json\s*|```$/g, "").trim());
+    if (json.lrc) {
+      setLyrics(json.lrc);
+      $("lyricsEditor").value = json.lrc;
+      if (state.current) state.current.lrc = json.lrc;
+    }
+    if (state.current) {
+      state.current.title = json.title || state.current.title;
+      state.current.artist = json.artist || state.current.artist;
+      $("trackMeta").textContent = [state.current.artist, state.current.title].filter(Boolean).join(" — ");
+    }
+    $("lyricStatus").textContent = "AI structure applied.";
+  } catch (err) {
+    $("lyricStatus").textContent = "AI failed: " + err.message + " — transcript is still on screen.";
+  }
+}
+
+function makeItem(file) {
+  const url = URL.createObjectURL(file);
+  const guessed = file.name.replace(/\.[^.]+$/, "").replace(/_/g, " ");
+  const parts = guessed.split(" - ");
+  return {
+    id: uid(),
+    title: parts.length > 1 ? parts.slice(1).join(" - ") : guessed,
+    artist: parts.length > 1 ? parts[0] : "",
+    url, file, owner: state.name, lrc: ""
+  };
+}
+function addTrack(file) {
+  const item = makeItem(file);
+  if (state.role === "guest" && state.hostConn) {
+    pushFile(item);
+    $("lyricStatus").textContent = "Sending " + item.title + " to the room…";
+    return;
+  }
+  state.queue.push(item);
+  renderQueue();
+  loadTrack(item);
+  broadcast({ type: "queue", queue: state.queue.map(publicTrack) });
+}
+function publicTrack(t) { return { id: t.id, title: t.title, artist: t.artist, owner: t.owner, hasLrc: !!t.lrc }; }
+function renderQueue() {
+  $("queue").innerHTML = "";
+  state.queue.forEach((item) => {
+    const el = document.createElement("div");
+    el.className = "queue-item" + (state.current && state.current.id === item.id ? " active" : "");
+    el.innerHTML = `<b>${escapeHtml(item.title)}</b><br><span class="meta">${escapeHtml(item.artist || "Unknown")} · ${escapeHtml(item.owner || "")}</span>`;
+    el.onclick = () => {
+      if (state.role === "host") loadTrack(item);
+      else if (state.hostConn) state.hostConn.send(JSON.stringify({ type: "request-play", id: item.id }));
+    };
+    $("queue").appendChild(el);
+  });
+}
+function loadTrack(item) {
+  state.current = item;
+  state.lines = [];
+  state.words = [];
+  $("trackMeta").textContent = [item.artist, item.title].filter(Boolean).join(" — ");
+  $("searchQ").value = [item.artist, item.title].filter(Boolean).join(" ");
+  $("nowLine").textContent = "Finding lyrics…";
+  $("nextLine").textContent = "";
+  renderQueue();
+  if (item.url) audioEl.src = item.url;
+  if (state.role === "host") broadcast({ type: "track", track: publicTrack(item), lrc: item.lrc || "" });
+  if (item.lrc) setLyrics(item.lrc);
+  const kick = () => { if (state.current === item) ensureLyrics(item); };
+  if (item.file) audioEl.onloadedmetadata = kick;
+  else kick();
+}
+
+function broadcast(msg) {
+  const data = JSON.stringify(msg);
+  state.conns.forEach((c) => { try { c.send(data); } catch (e) {} });
+}
+function handleMsg(raw, conn) {
+  let msg = raw;
+  if (typeof raw === "string") { try { msg = JSON.parse(raw); } catch { return; } }
+  if (msg instanceof ArrayBuffer || raw instanceof ArrayBuffer) return;
+  if (msg.type === "hello") {
+    chatLine(msg.name, "joined");
+    conn.peerId = msg.peerId;
+    if (state.role === "host") {
+      conn.send(JSON.stringify({ type: "state", queue: state.queue.map(publicTrack), lrc: state.lines.length ? toLRC(state.lines) : "", track: state.current && publicTrack(state.current), t: audioEl.currentTime, playing: state.playing }));
+      streamTo(msg.peerId);
+    }
+  }
+  if (msg.type === "chat") chatLine(msg.name, msg.text);
+  if (msg.type === "state" || msg.type === "lyrics" || msg.type === "track") {
+    if (msg.lrc) setLyrics(msg.lrc);
+    if (msg.track) {
+      $("trackMeta").textContent = [msg.track.artist, msg.track.title].filter(Boolean).join(" — ");
+      $("searchQ").value = [msg.track.artist, msg.track.title].filter(Boolean).join(" ");
+      if (!state.queue.some((q) => q.id === msg.track.id)) state.queue.push(msg.track);
+      state.current = state.queue.find((q) => q.id === msg.track.id) || msg.track;
+      renderQueue();
+    }
+    if (msg.queue) {
+      msg.queue.forEach((q) => { if (!state.queue.some((x) => x.id === q.id)) state.queue.push(q); });
+      renderQueue();
+    }
+  }
+  if (msg.type === "clock" && state.role !== "host") {
+    state.clock = { t: msg.t, at: performance.now(), playing: !!msg.playing };
+    $("playBtn").textContent = msg.playing ? "Pause" : "Play";
+  }
+  if (msg.type === "transport" && state.role === "host") {
+    if (msg.action === "toggle") $("playBtn").click();
+    if (msg.action === "seek" && audioEl.duration) audioEl.currentTime = msg.t;
+  }
+  if (msg.type === "file-meta") {
+    state.incoming = { id: msg.id, name: msg.name, title: msg.title, artist: msg.artist, size: msg.size, parts: [], got: 0, total: msg.total, owner: msg.owner };
+    $("peerStatus").textContent = "Receiving " + msg.title + "…";
+  }
+  if (msg.type === "file-chunk" && state.incoming && state.incoming.id === msg.id) {
+    state.incoming.parts[msg.i] = new Uint8Array(msg.chunk);
+    state.incoming.got++;
+    if (state.incoming.got >= state.incoming.total) {
+      const blob = new Blob(state.incoming.parts);
+      const file = new File([blob], state.incoming.name, { type: "audio/mpeg" });
+      $("peerStatus").textContent = "Track received. Playing it for the room.";
+      state.incoming = null;
+      addTrack(file);
+    }
+  }
+  if (msg.type === "request-play" && state.role === "host") {
+    const item = state.queue.find((q) => q.id === msg.id);
+    if (item) loadTrack(item);
+  }
+}
+function chatLine(name, text) {
+  const el = document.createElement("div");
+  el.className = "chat-line";
+  el.innerHTML = `<b>${escapeHtml(name || "room")}</b> ${escapeHtml(text)}`;
+  $("chat").appendChild(el);
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+function enterRoom(room, name) {
+  state.room = room;
+  state.name = name || "Singer";
+  saveSession();
+  $("lobby").classList.add("hidden");
+  $("room").classList.remove("hidden");
+  $("leaveBtn").classList.remove("hidden");
+  $("roomBadge").textContent = "Room " + room;
+  $("micGain").value = state.settings.mic || 80;
+  const hid = hostId(room);
+  $("peerStatus").textContent = "Connecting…";
+  const peer = new Peer(hid);
+  state.peer = peer;
+  let becameGuest = false;
+  peer.on("open", () => {
+    state.role = "host";
+    $("peerStatus").textContent = "You are hosting " + room;
+    $("roomBadge").textContent = "Room " + room + " · host";
+  });
+  peer.on("connection", (conn) => {
+    state.conns.push(conn);
+    conn.on("data", (d) => handleMsg(d, conn));
+    conn.on("close", () => { state.conns = state.conns.filter((c) => c !== conn); });
+  });
+  peer.on("call", (call) => answerRoomCall(call));
+  peer.on("error", (err) => {
+    if (!becameGuest && /unavailable|taken/i.test(String(err.type || err))) {
+      becameGuest = true;
+      try { peer.destroy(); } catch (e) {}
+      state.role = "guest";
+      const guest = new Peer();
+      state.peer = guest;
+      guest.on("open", () => {
+        const conn = guest.connect(hid, { reliable: true });
+        state.hostConn = conn;
+        state.conns = [conn];
+        conn.on("open", () => conn.send(JSON.stringify({ type: "hello", name: state.name, peerId: guest.id })));
+        conn.on("data", (d) => handleMsg(d, conn));
+        $("peerStatus").textContent = "Joined " + room + ". Waiting for the host mix.";
+        $("roomBadge").textContent = "Room " + room + " · guest";
+      });
+      guest.on("call", (call) => answerRoomCall(call));
+      return;
+    }
+    $("peerStatus").textContent = "Peer error: " + err.type + ". Retry reconnect.";
+  });
+}
+function answerRoomCall(call) {
+  call.answer();
+  call.on("stream", (stream) => {
+    let el = $("roomAudio");
+    if (!el) {
+      el = document.createElement("audio");
+      el.id = "roomAudio";
+      el.autoplay = true;
+      document.body.appendChild(el);
+    }
+    el.srcObject = stream;
+    el.play().catch(() => {});
+    $("peerStatus").textContent = "Hearing the room mix.";
+  });
+}
+function streamTo(peerId) {
+  if (state.role !== "host" || !peerId || !state.peer) return;
+  try {
+    ensureGraph();
+    if (ctx.state === "suspended") ctx.resume();
+    state.peer.call(peerId, graph.live.stream);
+  } catch (err) {
+    $("peerStatus").textContent = "Could not share audio: " + err.message;
+  }
+}
+function leaveRoom() {
+  try { state.peer && state.peer.destroy(); } catch (e) {}
+  state.peer = null;
+  state.conns = [];
+  audioEl.pause();
+  $("room").classList.add("hidden");
+  $("lobby").classList.remove("hidden");
+  $("leaveBtn").classList.add("hidden");
+  $("roomBadge").textContent = "";
+}
+
+async function pushFile(item) {
+  if (!item.file || !state.hostConn) return;
+  const buf = new Uint8Array(await item.file.arrayBuffer());
+  const size = 16000;
+  const total = Math.ceil(buf.length / size);
+  state.hostConn.send(JSON.stringify({ type: "file-meta", id: item.id, name: item.file.name, title: item.title, artist: item.artist, size: buf.length, total, owner: state.name }));
+  for (let i = 0; i < total; i++) {
+    state.hostConn.send(JSON.stringify({ type: "file-chunk", id: item.id, i, chunk: Array.from(buf.slice(i * size, (i + 1) * size)) }));
+    await new Promise((r) => setTimeout(r, 15));
+  }
+}
+
+async function toggleRecord() {
+  if (state.record) {
+    state.record.stop();
+    return;
+  }
+  const g = ensureGraph();
+  await ctx.resume();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mic = ctx.createMediaStreamSource(stream);
+  if (g.micIn) g.micIn.disconnect();
+  mic.connect(g.micGain);
+  g.micIn = mic;
+  const dest = ctx.createMediaStreamDestination();
+  g.master.connect(dest);
+  const rec = new MediaRecorder(dest.stream);
+  state.chunks = [];
+  rec.ondataavailable = (e) => state.chunks.push(e.data);
+  rec.onstop = () => {
+    const blob = new Blob(state.chunks, { type: "audio/webm" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (state.current ? state.current.title : "verse") + "-take.webm";
+    a.click();
+    $("recordBtn").textContent = "Record";
+    state.record = null;
+  };
+  rec.start();
+  state.record = rec;
+  $("recordBtn").textContent = "Stop";
+}
+
+function tick() {
+  const t = songTime();
+  if (state.current || state.lines.length) {
+    renderLine(t);
+    const dur = state.role === "host" ? audioEl.duration : 0;
+    $("clock").textContent = fmt(t) + (dur ? " / " + fmt(dur) : "");
+    if (dur) $("seek").value = Math.round(1000 * t / dur);
+  }
+  requestAnimationFrame(tick);
+}
+setInterval(() => {
+  if (state.role === "host" && state.current) broadcast({ type: "clock", t: audioEl.currentTime || 0, playing: state.playing });
+}, 400);
+
+$("joinBtn").onclick = () => {
+  const name = $("nameInput").value.trim() || "Singer";
+  const room = ($("roomInput").value.trim() || code()).toLowerCase();
+  enterRoom(room, name);
+};
+$("reconnectBtn").onclick = () => {
+  const s = loadSession();
+  if (!s) { $("lobbyStatus").textContent = "No room stored yet."; return; }
+  $("nameInput").value = s.name;
+  enterRoom(s.room, s.name);
+};
+$("leaveBtn").onclick = leaveRoom;
+$("uploadBtn").onclick = () => $("fileInput").click();
+$("fileInput").onchange = () => { if ($("fileInput").files[0]) addTrack($("fileInput").files[0]); };
+$("searchBtn").onclick = searchLyrics;
+$("playBtn").onclick = async () => {
+  if (state.role === "guest") {
+    const el = $("roomAudio");
+    if (el) el.play().catch(() => {});
+    if (state.hostConn) state.hostConn.send(JSON.stringify({ type: "transport", action: "toggle" }));
+    return;
+  }
+  ensureGraph();
+  await ctx.resume();
+  state.conns.forEach((c) => { if (c.peerId) streamTo(c.peerId); });
+  if (audioEl.paused) { await audioEl.play(); state.playing = true; $("playBtn").textContent = "Pause"; }
+  else { audioEl.pause(); state.playing = false; $("playBtn").textContent = "Play"; }
+};
+audioEl.onended = () => { state.playing = false; $("playBtn").textContent = "Play"; };
+$("seek").oninput = () => {
+  if (state.role === "guest") {
+    if (state.hostConn && audioEl.duration) state.hostConn.send(JSON.stringify({ type: "transport", action: "seek", t: audioEl.duration * Number($("seek").value) / 1000 }));
+    return;
+  }
+  if (audioEl.duration) audioEl.currentTime = audioEl.duration * Number($("seek").value) / 1000;
+};
+$("vocalGain").oninput = applyMix;
+$("bandGain").oninput = applyMix;
+$("micGain").oninput = applyMix;
+$("recordBtn").onclick = () => toggleRecord().catch((e) => alert(e.message));
+$("editLyricsBtn").onclick = () => { $("lyricsEditor").value = state.lines.length ? toLRC(state.lines) : ""; $("lyricsModal").classList.remove("hidden"); };
+$("applyLyrics").onclick = () => { setLyrics($("lyricsEditor").value); $("lyricsModal").classList.add("hidden"); };
+$("closeLyrics").onclick = () => $("lyricsModal").classList.add("hidden");
+$("transcribeBtn").onclick = transcribe;
+$("aiBtn").onclick = () => cleanWithAI(false);
+$("copyCodeBtn").onclick = () => navigator.clipboard.writeText(state.room);
+$("camsBtn").onclick = () => {
+  const wrap = $("camsWrap");
+  wrap.classList.toggle("hidden");
+  if (!wrap.classList.contains("hidden")) {
+    const label = encodeURIComponent(state.name || "Singer");
+    $("camsFrame").src = `https://vdo.ninja/?room=${encodeURIComponent("verse" + state.room)}&webcam&label=${label}&autostart`;
+  }
+};
+$("chatSend").onclick = () => {
+  const text = $("chatInput").value.trim();
+  if (!text) return;
+  chatLine(state.name, text);
+  const payload = JSON.stringify({ type: "chat", name: state.name, text });
+  if (state.role === "host") broadcast({ type: "chat", name: state.name, text });
+  else if (state.hostConn) state.hostConn.send(payload);
+  $("chatInput").value = "";
+};
+$("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("chatSend").click(); });
+$("settingsBtn").onclick = () => {
+  $("apiKey").value = state.settings.apiKey || "";
+  $("proxy").value = state.settings.proxy || "";
+  $("model").value = state.settings.model || "deepseek-chat";
+  $("settingsModal").classList.remove("hidden");
+};
+$("closeSettings").onclick = () => $("settingsModal").classList.add("hidden");
+$("saveSettings").onclick = () => {
+  saveSettings({ apiKey: $("apiKey").value.trim(), proxy: $("proxy").value.trim(), model: $("model").value.trim() || "deepseek-chat", mic: Number($("micGain").value) });
+  $("settingsModal").classList.add("hidden");
+};
+const saved = loadSession();
+if (saved) { $("nameInput").value = saved.name || ""; $("roomInput").value = saved.room || ""; }
+tick();
+</script>
+</body>
+</html>
